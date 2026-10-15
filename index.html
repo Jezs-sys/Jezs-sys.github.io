@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Retrasos - Red Neuronal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-p-6 flex items-center justify-center min-h-screen">
+    <div class="max-w-2xl w-full bg-slate-800 p-8 rounded-xl shadow-2xl border border-slate-700 my-8">
+        <h1 class="text-2xl font-bold text-center mb-2 text-indigo-400">Simulador de Retrasos en Tijuana</h1>
+        <p class="text-sm text-slate-400 text-center mb-6">Ajusta los pesos iniciales de la red neuronal y prueba las condiciones de tu trayecto.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Calibración de Pesos -->
+            <div class="bg-slate-900 p-4 rounded-lg border border-slate-700">
+                <h2 class="font-semibold text-indigo-300 mb-3">Pesos Iniciales (0.1 a 3.0)</h2>
+                <div class="space-y-3 text-sm">
+                    <div>
+                        <label class="block text-slate-400">Despertarse tarde</label>
+                        <input type="number" id="w1" value="1.0" step="0.1" min="0.1" max="3.0" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400">Tráfico pesado</label>
+                        <input type="number" id="w2" value="2.0" step="0.1" min="0.1" max="3.0" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400">Clima o lluvia</label>
+                        <input type="number" id="w3" value="1.5" step="0.1" min="0.1" max="3.0" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400">Transporte saturado</label>
+                        <input type="number" id="w4" value="1.8" step="0.1" min="0.1" max="3.0" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400">Obras viales</label>
+                        <input type="number" id="w5" value="1.2" step="0.1" min="0.1" max="3.0" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400">Contratiempos en cruces</label>
+                        <input type="number" id="w6" value="0.8" step="0.1" min="0.1" max="3.0" class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Condiciones del Trayecto -->
+            <div class="bg-slate-900 p-4 rounded-lg border border-slate-700 flex flex-col justify-between">
+                <div>
+                    <h2 class="font-semibold text-indigo-300 mb-3">Tu Trayecto de Hoy</h2>
+                    <div class="space-y-3 text-sm">
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" id="v1" class="rounded bg-slate-800 border-slate-600 text-indigo-500"> <span>¿Despertaste tarde?</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" id="v2" checked class="rounded bg-slate-800 border-slate-600 text-indigo-500"> <span>¿Tráfico pesado?</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" id="v3" class="rounded bg-slate-800 border-slate-600 text-indigo-500"> <span>¿Clima desfavorable?</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" id="v4" checked class="rounded bg-slate-800 border-slate-600 text-indigo-500"> <span>¿Transporte saturado?</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" id="v5" class="rounded bg-slate-800 border-slate-600 text-indigo-500"> <span>¿Obras viales?</span></label>
+                        <label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" id="v6" class="rounded bg-slate-800 border-slate-600 text-indigo-500"> <span>¿Contratiempos en cruces?</span></label>
+                    </div>
+                </div>
+                
+                <button onclick="ejecutarRedNeuronal()" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-4 rounded transition duration-200 cursor-pointer">
+                    Entrenar y Calcular
+                </button>
+            </div>
+        </div>
+
+        <!-- Resultado -->
+        <div id="resultadoBox" class="hidden bg-slate-900 border border-indigo-500/50 p-4 rounded-lg text-center">
+            <h3 class="text-sm text-slate-400">Probabilidad estimada de llegar tarde:</h3>
+            <p id="resultadoValor" class="text-3xl font-bold text-indigo-400 mt-1">0.00%</p>
+        </div>
+    </div>
+
+    <script>
+        function sigmoid(x) {
+            return 1 / (1 + Math.exp(-x));
+        }
+
+        function sigmoidDerivative(x) {
+            return x * (1 - x);
+        }
+
+        function ejecutarRedNeuronal() {
+            // Leer pesos ingresados
+            let w = [
+                parseFloat(document.getElementById('w1').value),
+                parseFloat(document.getElementById('w2').value),
+                parseFloat(document.getElementById('w3').value),
+                parseFloat(document.getElementById('w4').value),
+                parseFloat(document.getElementById('w5').value),
+                parseFloat(document.getElementById('w6').value)
+            ];
+            let bias = -1.2;
+            let learningRate = 0.3;
+
+            // Datos de entrenamiento
+            let inputs = [
+                [0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 1, 0, 0],
+                [1, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 0, 0],
+                [1, 1, 1, 1, 1, 1],
+                [0, 0, 0, 0, 1, 0]
+            ];
+            let outputs = [0, 1, 0, 1, 1, 0];
+
+            // Entrenamiento (10 ciclos)
+            for (let ciclo = 0; ciclo < 10; ciclo++) {
+                for (let i = 0; i < inputs.length; i++) {
+                    let linearOutput = bias;
+                    for (let j = 0; j < w.length; j++) {
+                        linearOutput += inputs[i][j] * w[j];
+                    }
+                    let prediction = sigmoid(linearOutput);
+                    let error = outputs[i] - prediction;
+                    let adjustment = error * sigmoidDerivative(prediction);
+
+                    for (let j = 0; j < w.length; j++) {
+                        w[j] += inputs[i][j] * adjustment * learningRate;
+                    }
+                    bias += adjustment * learningRate;
+                }
+            }
+
+            // Datos del usuario actual
+            let userInputs = [
+                document.getElementById('v1').checked ? 1 : 0,
+                document.getElementById('v2').checked ? 1 : 0,
+                document.getElementById('v3').checked ? 1 : 0,
+                document.getElementById('v4').checked ? 1 : 0,
+                document.getElementById('v5').checked ? 1 : 0,
+                document.getElementById('v6').checked ? 1 : 0
+            ];
+
+            let finalLinear = bias;
+            for (let j = 0; j < w.length; j++) {
+                finalLinear += userInputs[j] * w[j];
+            }
+            let probabilidad = sigmoid(finalLinear);
+
+            // Mostrar resultado en pantalla
+            document.getElementById('resultadoBox').classList.remove('hidden');
+            document.getElementById('resultadoValor').innerText = (probabilidad * 100).toFixed(2) + '%';
+        }
+    </script>
+</body>
+</html>
